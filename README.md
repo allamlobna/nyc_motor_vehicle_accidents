@@ -1,4 +1,4 @@
-# nyc_motorvehicle_accidents
+# nyc_motor_vehicle_accidents
 https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95
 Collected Nov 13
 ## Summary
