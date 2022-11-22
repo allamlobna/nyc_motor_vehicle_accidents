@@ -1,5 +1,6 @@
 SELECT TOP (1000) *
 FROM [nyc_motor_vehicle_collisions].[dbo].[Motor_Vehicle_Collisions_Crashes]
+ 
 -------------------------------------------------------------------------------
 -- Create temp table for all changes to avoid permanent changes to raw data --
 -------------------------------------------------------------------------------
@@ -8,8 +9,7 @@ SELECT *
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_name = 'Motor_Vehicle_Collisions_Crashes'
 
---Creats temporary table names #VEHICLE_COLLISIONS_TEMP
-DROP TABLE [#VEHICLE_COLLISIONS_TEMP]
+--Creates working table names [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 
 SELECT 
     CRASH_DATE,
@@ -41,31 +41,36 @@ SELECT
     VEHICLE_TYPE_CODE_3,
     VEHICLE_TYPE_CODE_4,
     VEHICLE_TYPE_CODE_5
-INTO #VEHICLE_COLLISIONS_TEMP
+INTO [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 FROM [nyc_motor_vehicle_collisions].[dbo].[Motor_Vehicle_Collisions_Crashes]
 WHERE COLLISION_ID IS NOT NULL
+
+SELECT TABLE_NAME 
+FROM [nyc_motor_vehicle_collisions].INFORMATION_SCHEMA.TABLES 
+
+
 
 --Confirmed all data appears to have been transferred to temp table
 SELECT * FROM [nyc_motor_vehicle_collisions].[dbo].[Motor_Vehicle_Collisions_Crashes]
 EXCEPT
-SELECT * FROM #VEHICLE_COLLISIONS_TEMP
+SELECT * FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 
 -------------------------------------------------------------------------------
 -- Populate ZIP_CODE values that are null using ON_STREET_NAME and CROSS_STREET_NAME --
 -------------------------------------------------------------------------------
 SELECT TOP (1000) *
-FROM [#VEHICLE_COLLISIONS_TEMP]
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 
 -- 603982 ZIP_CODE NULL values
 SELECT COUNT(*)
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE ZIP_CODE IS NULL
 
 -- Inner Join to match zipcode of a to b zipcode then populating null zipcodes
 UPDATE a
 SET ZIP_CODE = ISNULL(a.ZIP_CODE, b.ZIP_CODE)
-FROM [#VEHICLE_COLLISIONS_TEMP] a
-JOIN [#VEHICLE_COLLISIONS_TEMP] b
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] a
+JOIN [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] b
     ON a.ON_STREET_NAME = b.ON_STREET_NAME
     AND a.CROSS_STREET_NAME = b.CROSS_STREET_NAME
     AND a.[COLLISION_ID] <> b.[COLLISION_ID]
@@ -73,12 +78,12 @@ WHERE a.ZIP_CODE IS NULL
 
 -- 597452 ZIP_CODE NULL values, reduced NULL values by 6285
 SELECT COUNT(*)
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE ZIP_CODE IS NULL
 
 -- 48885 instances of no location data recorded. OFF_STREET_NAME not included because it is described area, not location
 SELECT COUNT(*)
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE 
     ZIP_CODE IS NULL 
     AND BOROUGH IS NULL
@@ -90,7 +95,7 @@ WHERE
 
 -- Removed rows with no location data
 DELETE 
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE 
     ZIP_CODE IS NULL 
     AND BOROUGH IS NULL
@@ -106,7 +111,7 @@ WHERE
 
 -- Confirms that no clerical errors were made. If CONTRIBUTING_FACTOR_VEHICLE_1 is 'Unspecified', then others are unspecified or null
 SELECT *
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE CONTRIBUTING_FACTOR_VEHICLE_1 = 'Unspecified' AND
     ((CONTRIBUTING_FACTOR_VEHICLE_2 <> 'Unspecified' 
     AND CONTRIBUTING_FACTOR_VEHICLE_2 IS NOT NULL)
@@ -118,7 +123,7 @@ WHERE CONTRIBUTING_FACTOR_VEHICLE_1 = 'Unspecified' AND
     AND CONTRIBUTING_FACTOR_VEHICLE_4 IS NOT NULL))
 
 -- Illness has misspellings as Illnes. Corrected all misspellings in the 5 columns. 
-UPDATE #VEHICLE_COLLISIONS_TEMP
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 SET
 CONTRIBUTING_FACTOR_VEHICLE_1 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_1, 'Illnes', 'Illness'),
 CONTRIBUTING_FACTOR_VEHICLE_2 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_2, 'Illnes', 'Illness'),
@@ -127,7 +132,7 @@ CONTRIBUTING_FACTOR_VEHICLE_4 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_4, 'Illnes',
 CONTRIBUTING_FACTOR_VEHICLE_5 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_5, 'Illnes', 'Illness')
 
 --Must replace with 'Illnes' to avoid correting 'Illness' to 'Illnesss'
-UPDATE #VEHICLE_COLLISIONS_TEMP
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 SET
 CONTRIBUTING_FACTOR_VEHICLE_1 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_1, 'Illnesss', 'Illness'),
 CONTRIBUTING_FACTOR_VEHICLE_2 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_2, 'Illnesss', 'Illness'),
@@ -136,25 +141,23 @@ CONTRIBUTING_FACTOR_VEHICLE_4 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_4, 'Illnesss
 CONTRIBUTING_FACTOR_VEHICLE_5 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_5, 'Illnesss', 'Illness')
 
 --
-SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_1 FROM #VEHICLE_COLLISIONS_TEMP
+SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_1 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 EXCEPT
-SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_2 FROM #VEHICLE_COLLISIONS_TEMP
+SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_2 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 EXCEPT
-SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_3 FROM #VEHICLE_COLLISIONS_TEMP
+SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_3 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 EXCEPT
-SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_4 FROM #VEHICLE_COLLISIONS_TEMP
+SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_4 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 EXCEPT
-SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_5 FROM #VEHICLE_COLLISIONS_TEMP
-
-
+SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_5 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 
 SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_1, COUNT(CONTRIBUTING_FACTOR_VEHICLE_1) AS NUM_1
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 GROUP BY CONTRIBUTING_FACTOR_VEHICLE_1
 ORDER BY NUM_1 DESC
 
 SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_2, COUNT(CONTRIBUTING_FACTOR_VEHICLE_2) AS NUM_2
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 GROUP BY CONTRIBUTING_FACTOR_VEHICLE_2
 ORDER BY NUM_2 DESC
 
@@ -162,7 +165,7 @@ ORDER BY NUM_2 DESC
 -- Aggregating the Contributing Factors Columns --
 -------------------------------------------------------------------------------
 
-ALTER TABLE #VEHICLE_COLLISIONS_TEMP
+ALTER TABLE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 ADD 
     CONTRIBUTING_FACTORS_1 VARCHAR(MAX),
     CONTRIBUTING_FACTORS_2 VARCHAR(MAX),
@@ -170,7 +173,8 @@ ADD
     CONTRIBUTING_FACTORS_4 VARCHAR(MAX),
     CONTRIBUTING_FACTORS_5 VARCHAR(MAX)
 
-ALTER TABLE #VEHICLE_COLLISIONS_TEMP
+
+ALTER TABLE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 DROP COLUMN
     CONTRIBUTING_FACTORS_1,
     CONTRIBUTING_FACTORS_2,
@@ -188,581 +192,249 @@ WHILE @COUNT < 6
 BEGIN
     SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
     SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
-    SET @sql = 'UPDATE [#VEHICLE_COLLISIONS_TEMP] 
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
         SET ' + @FULL_COL_NAME + ' = ''Unspecified''
         WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Unspecified'',''80'',''1'')'
     EXEC(@sql)
     SET @COUNT = @COUNT + 1
 END
 
-SELECT CONTRIBUTING_FACTORS_1
-FROM #VEHICLE_COLLISIONS_TEMP
-GROUP BY CONTRIBUTING_FACTORS_1
-
-
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTORS_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+DECLARE @ORIG_COL_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTOR_VEHICLE_'
+DECLARE @ORIG_FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
 BEGIN
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = 'Unspecified'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Unspecified',
-'80', 
-'1'
-)
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''Driver Distracted''
+        WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Driver Inattention/Distraction'',
+        ''Outside Car Distraction'',
+        ''Passenger Distraction'',
+        ''Eating or Drinking'')'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
 END
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = 'Driver Distracted'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Driver Inattention/Distraction',
-'Outside Car Distraction',
-'Passenger Distraction',
-'Eating or Drinking'
-)
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTORS_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+DECLARE @ORIG_COL_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTOR_VEHICLE_'
+DECLARE @ORIG_FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''Vehicle Defective''
+        WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Brakes Defective'',
+        ''Steering Failure'',
+        ''Tire Failure/Inadequate'',
+        ''Accelerator Defective'',
+        ''Tow Hitch Defective'',
+        ''Windshield Inadequate'',
+        ''Tinted Windows'',
+        ''Headlights Defective'',
+        ''View Obstructed/Limited'',
+        ''Oversized Vehicle'')'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = 'Vehicle Defective'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Brakes Defective',
-'Steering Failure',
-'Tire Failure/Inadequate',
-'Accelerator Defective',
-'Tow Hitch Defective',
-'Windshield Inadequate',
-'Tinted Windows',
-'Headlights Defective',
-'View Obstructed/Limited',
-'Oversized Vehicle'
-)
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTORS_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+DECLARE @ORIG_COL_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTOR_VEHICLE_'
+DECLARE @ORIG_FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''Driver Error''
+        WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Failure to Yield Right-of-Way'',
+        ''Following Too Closely'',
+        ''Backing Unsafely'',
+        ''Passing or Lane Usage Improper'',
+        ''Passing Too Closely'',
+        ''Turning Improperly'',
+        ''Unsafe Lane Changing'',
+        ''Driver Inexperience'',
+        ''Failure to Keep Right'',
+        ''Traffic Control Disregarded'',
+        ''Unsafe Speed'',
+        ''Aggressive Driving/Road Rage'',
+        ''Reaction to Uninvolved Vehicle'',
+        ''Reaction to Other Uninvolved Vehicle'')'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = 'Driver Error'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Failure to Yield Right-of-Way',
-'Following Too Closely',
-'Backing Unsafely',
-'Passing or Lane Usage Improper',
-'Passing Too Closely',
-'Turning Improperly',
-'Unsafe Lane Changing',
-'Driver Inexperience',
-'Failure to Keep Right',
-'Traffic Control Disregarded',
-'Unsafe Speed',
-'Aggressive Driving/Road Rage',
-'Reaction to Uninvolved Vehicle',
-'Reaction to Other Uninvolved Vehicle'
-)
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTORS_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+DECLARE @ORIG_COL_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTOR_VEHICLE_'
+DECLARE @ORIG_FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''Electronic Device Distraction''
+        WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Cell Phone (hand-held)'',
+        ''Cell Phone (hands-free)'',
+        ''Using On Board Navigation Device'',
+        ''Texting'',
+        ''Listening/Using Headphones'',
+        ''Other Electronic Device'')'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = 'Electronic Device Distraction'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Cell Phone (hand-held)',
-'Cell Phone (hands-free)',
-'Using On Board Navigation Device',
-'Texting',
-'Listening/Using Headphones',
-'Other Electronic Device'
-)
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTORS_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+DECLARE @ORIG_COL_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTOR_VEHICLE_'
+DECLARE @ORIG_FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''Diver Under Influence''
+        WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Alcohol Involvement'',
+        ''Drugs (Illegal)'',
+        ''Prescription Medication'')'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = 'Diver Influenced'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Alcohol Involvement',
-'Drugs (Illegal)',
-'Prescription Medication'
-)
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTORS_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+DECLARE @ORIG_COL_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTOR_VEHICLE_'
+DECLARE @ORIG_FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''Street Conditions''
+        WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Pavement Defective'',
+        ''Pavement Slippery'',
+        ''Shoulders Defective/Improper'',
+        ''Lane Marking Improper/Inadequate'',
+        ''Traffic Control Device Improper/Non-Working'',
+        ''Other Lighting Defects'',
+        ''Obstruction/Debris'',
+        ''Glare'')'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = 'Street Conditions'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Pavement Defective',
-'Pavement Slippery',
-'Shoulders Defective/Improper',
-'Lane Marking Improper/Inadequate',
-'Traffic Control Device Improper/Non-Working',
-'Other Lighting Defects',
-'Obstruction/Debris',
-'Glare'
-)
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTORS_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+DECLARE @ORIG_COL_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTOR_VEHICLE_'
+DECLARE @ORIG_FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''Driver Fatigue''
+        WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Fatigued/Drowsy'',
+        ''Fell Asleep'')'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = 'Driver Fatigue'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Fatigued/Drowsy',
-'Fell Asleep'
-)
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTORS_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+DECLARE @ORIG_COL_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTOR_VEHICLE_'
+DECLARE @ORIG_FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''Driver Illness''
+        WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Lost Consciousness'',
+        ''Illness'',
+        ''Physical Disability'')'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = 'Driver Illness'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Lost Consciousness',
-'Illness',
-'Physical Disability'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_1 = '3rd Party'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_1 IN ('Pedestrian/Bicyclist/Other Pedestrian Error/Confusion',
-'Driverless/Runaway Vehicle',
-'Vehicle Vandalism',
-'Animals Action'
-)
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTORS_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+DECLARE @ORIG_COL_NAME VARCHAR(MAX) = 'CONTRIBUTING_FACTOR_VEHICLE_'
+DECLARE @ORIG_FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @ORIG_FULL_COL_NAME = @ORIG_COL_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''3rd Party''
+        WHERE ' + @ORIG_FULL_COL_NAME + ' IN (''Pedestrian/Bicyclist/Other Pedestrian Error/Confusion'',
+        ''Driverless/Runaway Vehicle'',
+        ''Vehicle Vandalism'',
+        ''Animals Action'')'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
 
 SELECT DISTINCT CONTRIBUTING_FACTORS_1, COUNT(CONTRIBUTING_FACTORS_1) AS NUM_1
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 GROUP BY CONTRIBUTING_FACTORS_1
 ORDER BY NUM_1 DESC
-
----------
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = 'Unspecified'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Unspecified',
-'80', 
-'1'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = 'Driver Distracted'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Driver Inattention/Distraction',
-'Outside Car Distraction',
-'Passenger Distraction',
-'Eating or Drinking'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = 'Vehicle Defective'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Brakes Defective',
-'Steering Failure',
-'Tire Failure/Inadequate',
-'Accelerator Defective',
-'Tow Hitch Defective',
-'Windshield Inadequate',
-'Tinted Windows',
-'Headlights Defective',
-'View Obstructed/Limited',
-'Oversized Vehicle'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = 'Driver Error'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Failure to Yield Right-of-Way',
-'Following Too Closely',
-'Backing Unsafely',
-'Passing or Lane Usage Improper',
-'Passing Too Closely',
-'Turning Improperly',
-'Unsafe Lane Changing',
-'Driver Inexperience',
-'Failure to Keep Right',
-'Traffic Control Disregarded',
-'Unsafe Speed',
-'Aggressive Driving/Road Rage',
-'Reaction to Uninvolved Vehicle',
-'Reaction to Other Uninvolved Vehicle'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = 'Electronic Device Distraction'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Cell Phone (hand-held)',
-'Cell Phone (hands-free)',
-'Using On Board Navigation Device',
-'Texting',
-'Listening/Using Headphones',
-'Other Electronic Device'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = 'Diver Influenced'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Alcohol Involvement',
-'Drugs (Illegal)',
-'Prescription Medication'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = 'Street Conditions'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Pavement Defective',
-'Pavement Slippery',
-'Shoulders Defective/Improper',
-'Lane Marking Improper/Inadequate',
-'Traffic Control Device Improper/Non-Working',
-'Other Lighting Defects',
-'Obstruction/Debris',
-'Glare'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = 'Driver Fatigue'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Fatigued/Drowsy',
-'Fell Asleep'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = 'Driver Illness'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Lost Consciousness',
-'Illness',
-'Physical Disability'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_2 = '3rd Party'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_2 IN ('Pedestrian/Bicyclist/Other Pedestrian Error/Confusion',
-'Driverless/Runaway Vehicle',
-'Vehicle Vandalism',
-'Animals Action'
-)
-
-----
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = 'Unspecified'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Unspecified',
-'80', 
-'1'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = 'Driver Distracted'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Driver Inattention/Distraction',
-'Outside Car Distraction',
-'Passenger Distraction',
-'Eating or Drinking'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = 'Vehicle Defective'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Brakes Defective',
-'Steering Failure',
-'Tire Failure/Inadequate',
-'Accelerator Defective',
-'Tow Hitch Defective',
-'Windshield Inadequate',
-'Tinted Windows',
-'Headlights Defective',
-'View Obstructed/Limited',
-'Oversized Vehicle'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = 'Driver Error'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Failure to Yield Right-of-Way',
-'Following Too Closely',
-'Backing Unsafely',
-'Passing or Lane Usage Improper',
-'Passing Too Closely',
-'Turning Improperly',
-'Unsafe Lane Changing',
-'Driver Inexperience',
-'Failure to Keep Right',
-'Traffic Control Disregarded',
-'Unsafe Speed',
-'Aggressive Driving/Road Rage',
-'Reaction to Uninvolved Vehicle',
-'Reaction to Other Uninvolved Vehicle'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = 'Electronic Device Distraction'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Cell Phone (hand-held)',
-'Cell Phone (hands-free)',
-'Using On Board Navigation Device',
-'Texting',
-'Listening/Using Headphones',
-'Other Electronic Device'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = 'Diver Influenced'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Alcohol Involvement',
-'Drugs (Illegal)',
-'Prescription Medication'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = 'Street Conditions'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Pavement Defective',
-'Pavement Slippery',
-'Shoulders Defective/Improper',
-'Lane Marking Improper/Inadequate',
-'Traffic Control Device Improper/Non-Working',
-'Other Lighting Defects',
-'Obstruction/Debris',
-'Glare'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = 'Driver Fatigue'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Fatigued/Drowsy',
-'Fell Asleep'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = 'Driver Illness'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Lost Consciousness',
-'Illness',
-'Physical Disability'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_3 = '3rd Party'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_3 IN ('Pedestrian/Bicyclist/Other Pedestrian Error/Confusion',
-'Driverless/Runaway Vehicle',
-'Vehicle Vandalism',
-'Animals Action'
-)
-------------
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = 'Unspecified'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Unspecified',
-'80', 
-'1'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = 'Driver Distracted'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Driver Inattention/Distraction',
-'Outside Car Distraction',
-'Passenger Distraction',
-'Eating or Drinking'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = 'Vehicle Defective'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Brakes Defective',
-'Steering Failure',
-'Tire Failure/Inadequate',
-'Accelerator Defective',
-'Tow Hitch Defective',
-'Windshield Inadequate',
-'Tinted Windows',
-'Headlights Defective',
-'View Obstructed/Limited',
-'Oversized Vehicle'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = 'Driver Error'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Failure to Yield Right-of-Way',
-'Following Too Closely',
-'Backing Unsafely',
-'Passing or Lane Usage Improper',
-'Passing Too Closely',
-'Turning Improperly',
-'Unsafe Lane Changing',
-'Driver Inexperience',
-'Failure to Keep Right',
-'Traffic Control Disregarded',
-'Unsafe Speed',
-'Aggressive Driving/Road Rage',
-'Reaction to Uninvolved Vehicle',
-'Reaction to Other Uninvolved Vehicle'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = 'Electronic Device Distraction'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Cell Phone (hand-held)',
-'Cell Phone (hands-free)',
-'Using On Board Navigation Device',
-'Texting',
-'Listening/Using Headphones',
-'Other Electronic Device'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = 'Diver Influenced'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Alcohol Involvement',
-'Drugs (Illegal)',
-'Prescription Medication'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = 'Street Conditions'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Pavement Defective',
-'Pavement Slippery',
-'Shoulders Defective/Improper',
-'Lane Marking Improper/Inadequate',
-'Traffic Control Device Improper/Non-Working',
-'Other Lighting Defects',
-'Obstruction/Debris',
-'Glare'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = 'Driver Fatigue'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Fatigued/Drowsy',
-'Fell Asleep'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = 'Driver Illness'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Lost Consciousness',
-'Illness',
-'Physical Disability'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_4 = '3rd Party'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_4 IN ('Pedestrian/Bicyclist/Other Pedestrian Error/Confusion',
-'Driverless/Runaway Vehicle',
-'Vehicle Vandalism',
-'Animals Action'
-)
-
-
-----------
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = 'Unspecified'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Unspecified',
-'80', 
-'1'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = 'Driver Distracted'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Driver Inattention/Distraction',
-'Outside Car Distraction',
-'Passenger Distraction',
-'Eating or Drinking'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = 'Vehicle Defective'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Brakes Defective',
-'Steering Failure',
-'Tire Failure/Inadequate',
-'Accelerator Defective',
-'Tow Hitch Defective',
-'Windshield Inadequate',
-'Tinted Windows',
-'Headlights Defective',
-'View Obstructed/Limited',
-'Oversized Vehicle'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = 'Driver Error'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Failure to Yield Right-of-Way',
-'Following Too Closely',
-'Backing Unsafely',
-'Passing or Lane Usage Improper',
-'Passing Too Closely',
-'Turning Improperly',
-'Unsafe Lane Changing',
-'Driver Inexperience',
-'Failure to Keep Right',
-'Traffic Control Disregarded',
-'Unsafe Speed',
-'Aggressive Driving/Road Rage',
-'Reaction to Uninvolved Vehicle',
-'Reaction to Other Uninvolved Vehicle'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = 'Electronic Device Distraction'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Cell Phone (hand-held)',
-'Cell Phone (hands-free)',
-'Using On Board Navigation Device',
-'Texting',
-'Listening/Using Headphones',
-'Other Electronic Device'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = 'Diver Influenced'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Alcohol Involvement',
-'Drugs (Illegal)',
-'Prescription Medication'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = 'Street Conditions'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Pavement Defective',
-'Pavement Slippery',
-'Shoulders Defective/Improper',
-'Lane Marking Improper/Inadequate',
-'Traffic Control Device Improper/Non-Working',
-'Other Lighting Defects',
-'Obstruction/Debris',
-'Glare'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = 'Driver Fatigue'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Fatigued/Drowsy',
-'Fell Asleep'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = 'Driver Illness'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Lost Consciousness',
-'Illness',
-'Physical Disability'
-)
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET CONTRIBUTING_FACTORS_5 = '3rd Party'
-WHERE CONTRIBUTING_FACTOR_VEHICLE_5 IN ('Pedestrian/Bicyclist/Other Pedestrian Error/Confusion',
-'Driverless/Runaway Vehicle',
-'Vehicle Vandalism',
-'Animals Action'
-)
 
 -------------------------------------------------------------------------------
 -- Cleaning String Values for vehicle_type --
 -------------------------------------------------------------------------------
 -- 1002 RESULTS
 SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 GROUP BY VEHICLE_TYPE_CODE_1
 ORDER BY NUM DESC
 
-SELECT VEHICLE_TYPE_CODE_1
-FROM #VEHICLE_COLLISIONS_TEMP
-WHERE VEHICLE_TYPE_CODE_1 LIKE '%AMB%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%BULA%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%hosp%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%med%'
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET
-    VEHICLE_TYPE_CODE_1 = 'AMBULANCE'
-WHERE VEHICLE_TYPE_CODE_1 LIKE '%AMB%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%BULA%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%hosp%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%med%'
-
--- 979 RESULTS
-SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
-GROUP BY VEHICLE_TYPE_CODE_1
-ORDER BY NUM DESC
-
-SELECT VEHICLE_TYPE_CODE_1
-FROM #VEHICLE_COLLISIONS_TEMP
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%GOV%'
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
+    OR VEHICLE_TYPE_CODE_1 LIKE '%gvt%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%feder%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%city%'
+--Group 1
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 SET
     VEHICLE_TYPE_CODE_1 = 'GOVERNMENT'
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%GOV%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%gvt%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%feder%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%city%'
 
--- 974 RESULTS
-SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
-GROUP BY VEHICLE_TYPE_CODE_1
+-- 925 RESULTS
+SELECT VEHICLE_TYPE_CODE_2, COUNT(VEHICLE_TYPE_CODE_2) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_2
 ORDER BY NUM DESC
 
-SELECT VEHICLE_TYPE_CODE_1
-FROM #VEHICLE_COLLISIONS_TEMP
-WHERE VEHICLE_TYPE_CODE_1 LIKE '%FDNY%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%FD%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%Fir%'
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET
-    VEHICLE_TYPE_CODE_1 = 'FDNY'
-WHERE VEHICLE_TYPE_CODE_1 LIKE '%FDNY%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%FD%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%Fir%'
-
--- 948 RESULTS
-SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
-GROUP BY VEHICLE_TYPE_CODE_1
-ORDER BY NUM DESC
-
-SELECT VEHICLE_TYPE_CODE_1
-FROM #VEHICLE_COLLISIONS_TEMP
-WHERE VEHICLE_TYPE_CODE_1 LIKE '%2%'
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE (VEHICLE_TYPE_CODE_1 LIKE '%2%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%4%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%Sed%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%PAS%'
@@ -772,11 +444,49 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%2%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%door%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%dr%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%van%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%wagon%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%RV%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mini%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sprin%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sub%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%jeep%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%winn%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%econo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dodge%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ford%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%navi%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%chevy%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cher%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%chev%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%open%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%stree%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%road%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%self%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%niss%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%merc%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%toyo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%coup%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%R/V%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%f15%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ram%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%smart%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sona%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%isuzu%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%fusion%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%e-350%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%conve%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%econo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sling%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%wine%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%camp%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%convert%')
+    AND VEHICLE_TYPE_CODE_1 NOT LIKE '%com%'
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
+--Group 2
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 SET
     VEHICLE_TYPE_CODE_1 = 'PASSENGER VEHICLE'
-WHERE VEHICLE_TYPE_CODE_1 LIKE '%2%'
+WHERE (VEHICLE_TYPE_CODE_1 LIKE '%2%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%4%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%Sed%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%PAS%'
@@ -786,30 +496,52 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%2%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%door%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%dr%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%van%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%wagon%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%RV%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mini%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sprin%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sub%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%jeep%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%winn%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%econo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dodge%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ford%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%navi%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%chevy%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cher%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%chev%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%open%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%stree%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%road%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%self%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%niss%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%merc%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%toyo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%coup%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%R/V%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%f15%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ram%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%smart%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sona%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%isuzu%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%fusion%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%e-350%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%conve%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%econo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sling%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%wine%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%camp%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%convert%')
+    AND VEHICLE_TYPE_CODE_1 NOT LIKE '%com%'
 
--- 846 RESULTS
+-- 758 RESULTS
 SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 GROUP BY VEHICLE_TYPE_CODE_1
 ORDER BY NUM DESC
 
-SELECT VEHICLE_TYPE_CODE_1
-FROM #VEHICLE_COLLISIONS_TEMP
-WHERE VEHICLE_TYPE_CODE_1 LIKE '%PD%'
-
-UPDATE #VEHICLE_COLLISIONS_TEMP
-SET
-    VEHICLE_TYPE_CODE_1 = 'NYPD'
-WHERE VEHICLE_TYPE_CODE_1 LIKE '%PD%'
-
--- 843 RESULTS
-SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
-GROUP BY VEHICLE_TYPE_CODE_1
-ORDER BY NUM DESC
-
-SELECT VEHICLE_TYPE_CODE_1
-FROM #VEHICLE_COLLISIONS_TEMP
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%cat%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%fork%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%cons%'
@@ -827,9 +559,24 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%cat%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%conc%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%mix%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%cemen%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hopper%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%Tract'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bob%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%pallet%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%trac'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%back%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%glass%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%buck%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%john%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%GATOR%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%esca%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%skid%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%stack%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%exca%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bull%'
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
+--Group 3: CONSTRUCTION
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 SET
     VEHICLE_TYPE_CODE_1 = 'CONSTRUCTION'
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%cat%'
@@ -849,45 +596,106 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%cat%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%conc%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%mix%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%cemen%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hopper%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%Tract'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bob%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%pallet%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%trac'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%back%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%glass%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%buck%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%john%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%GATOR%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%esca%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%skid%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%stack%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%exca%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bull%'
 
--- 785 RESULTS
+-- 696 RESULTS
 SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 GROUP BY VEHICLE_TYPE_CODE_1
 ORDER BY NUM DESC
 
-SELECT VEHICLE_TYPE_CODE_1
-FROM #VEHICLE_COLLISIONS_TEMP
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE (VEHICLE_TYPE_CODE_1 LIKE '%box%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%semi%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%mack%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mac%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%LADD%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%C0M%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%18%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%15%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%truck%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%semi%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%trail%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%flat%')
+    OR VEHICLE_TYPE_CODE_1 LIKE '%flat%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%16%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%tail%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%com%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%tractor%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%heavy%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%omm%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Stake or Rack%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%trk%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Multi-Wheeled Vehicle%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Bulk Agriculture%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%f65%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%trl%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%stak%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%work%'
+    OR VEHICLE_TYPE_CODE_1 LIKE 'co'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cargo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%f55%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%f45%')
     AND VEHICLE_TYPE_CODE_1 NOT LIKE '%PICK%'
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
+-- Group 4: Commercial Vehicle
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 SET
-    VEHICLE_TYPE_CODE_1 = 'COMMERCIAL TRUCK'
+    VEHICLE_TYPE_CODE_1 = 'COMMERCIAL VEHICLE'
 WHERE (VEHICLE_TYPE_CODE_1 LIKE '%box%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%semi%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%mack%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mac%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%LADD%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%C0M%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%18%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%15%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%truck%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%semi%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%trail%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%flat%')
+    OR VEHICLE_TYPE_CODE_1 LIKE '%flat%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%16%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%tail%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%com%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%tractor%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%heavy%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%omm%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Stake or Rack%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%trk%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Multi-Wheeled Vehicle%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Bulk Agriculture%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%f65%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%trl%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%stak%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%work%'
+    OR VEHICLE_TYPE_CODE_1 LIKE 'co'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cargo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%f55%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%f45%')
     AND VEHICLE_TYPE_CODE_1 NOT LIKE '%PICK%'
 
--- 742 RESULTS
+-- 604 RESULTS
 SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 GROUP BY VEHICLE_TYPE_CODE_1
 ORDER BY NUM DESC
 
-SELECT VEHICLE_TYPE_CODE_1
-FROM #VEHICLE_COLLISIONS_TEMP
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%ups%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%fedex%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%fdX%'
@@ -898,8 +706,25 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%ups%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%hau%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%freig%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%deliv%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%del%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%frht%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mail%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cour%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%uspo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%us po%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mov%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%fed%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hal%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dhl%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dil%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%MOBIL%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%oil%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%house%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%pump%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%uhua%'
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
+--Group 5: Delivery
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 SET
     VEHICLE_TYPE_CODE_1 = 'DELIVERY'
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%ups%'
@@ -912,23 +737,46 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%ups%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%hau%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%freig%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%deliv%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%del%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%frht%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mail%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cour%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%uspo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%us po%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mov%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%fed%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hal%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dhl%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dil%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%MOBIL%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%oil%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%house%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%pump%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%uhua%'
 
--- 702 RESULTS
+-- 540 RESULTS
 SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 GROUP BY VEHICLE_TYPE_CODE_1
 ORDER BY NUM DESC
 
-SELECT VEHICLE_TYPE_CODE_1
-FROM #VEHICLE_COLLISIONS_TEMP
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%bus%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%trans%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%nj%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%mta%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%port'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%school%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%scho%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%omni%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%shutt%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%OMT%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%oml%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%omr%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%coach%'
 
-UPDATE #VEHICLE_COLLISIONS_TEMP
+-- Group 6: Public Transportation
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 SET
     VEHICLE_TYPE_CODE_1 = 'PUBLIC TRANSPORTATION'
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%bus%'
@@ -936,10 +784,676 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%bus%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%nj%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%mta%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%port'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%school%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%scho%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%omni%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%shutt%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%OMT%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%oml%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%omr%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%coach%'
 
--- 702 RESULTS
+-- 514 RESULTS
 SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
-FROM #VEHICLE_COLLISIONS_TEMP
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 GROUP BY VEHICLE_TYPE_CODE_1
 ORDER BY NUM DESC
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE (VEHICLE_TYPE_CODE_1 LIKE '%bike%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%e-bike%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%electric%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bicycle%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bik%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bic%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cycle%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%seg%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%skate%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%board%')
+    AND VEHICLE_TYPE_CODE_1 NOT LIKE '%Mot%'
+    AND VEHICLE_TYPE_CODE_1 NOT LIKE '%scoot%'
+    AND VEHICLE_TYPE_CODE_1 NOT LIKE '%moped%'
+
+-- Group 7: BICYCLE AND PERSONAL MOBILITY DEVICE
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET
+    VEHICLE_TYPE_CODE_1 = 'BICYCLE AND PERSONAL MOBILITY DEVICE'
+WHERE (VEHICLE_TYPE_CODE_1 LIKE '%electric%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bicycle%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bik%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%bic%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cycle%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%seg%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%skate%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%board%')
+    AND VEHICLE_TYPE_CODE_1 NOT LIKE '%Mot%'
+    AND VEHICLE_TYPE_CODE_1 NOT LIKE '%scoot%'
+    AND VEHICLE_TYPE_CODE_1 NOT LIKE '%moped%'
+
+-- 502 RESULTS
+SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_1
+ORDER BY NUM DESC
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%Util%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sweep%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%con e%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%garb%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sanit%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%tow%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%plow%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%shovel%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%snow%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%clean%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%street%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%power%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%uli%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%elec%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dot%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%verizon%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%zion%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%acces%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%SKYWATCH%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%park%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%grid%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%UT%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mower%'
+
+-- Group 8: Utility
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET
+    VEHICLE_TYPE_CODE_1 = 'UTILITY'
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%Util%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sweep%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%con e%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%garb%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sanit%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%tow%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%plow%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%shovel%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%snow%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%clean%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%street%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%power%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%uli%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%elec%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dot%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%verizon%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%zion%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%acces%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%SKYWATCH%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%park%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%grid%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%UT%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mower%'
+
+-- 451 RESULTS
+SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_1
+ORDER BY NUM DESC
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%motor%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mop%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%scoot%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sco%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%vespa%'
+
+-- Group 9: Motorcycle
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET
+    VEHICLE_TYPE_CODE_1 = 'MOTORCYCLE'
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%motor%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mop%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%scoot%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%sco%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%vespa%'
+
+-- 399 RESULTS
+SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_1
+ORDER BY NUM DESC
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%tax%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%live%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%limo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cab%'
+
+-- Group 10: Taxi Or Limo  
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET
+    VEHICLE_TYPE_CODE_1 = 'TAXI OR LIMO'
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%tax%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%live%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%limo%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cab%'
+
+-- 397 RESULTS
+SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_1
+ORDER BY NUM DESC
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%hors%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%carr%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hrse%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hosr%'
+
+-- Group 11: Horse Carriage
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET
+    VEHICLE_TYPE_CODE_1 = 'HORSE CARRIAGE'
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%hors%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%carr%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hrse%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hosr%'
+
+-- 389 RESULTS
+SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_1
+ORDER BY NUM DESC
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%ice%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cream%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%food%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ood%'
+
+--Group 12: FOOD
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET
+    VEHICLE_TYPE_CODE_1 = 'FOOD'
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%ice%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%cream%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%food%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ood%'
+
+-- 384 RESULTS
+SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_1
+ORDER BY NUM DESC
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%golf%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%atv%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%utv%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%3-wh%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%jet%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%boat%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%terrain%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%kar%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dirt%'
+
+-- Group 13: All Terrain
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET
+    VEHICLE_TYPE_CODE_1 = 'ALL TERRAIN'
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%golf%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%atv%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%utv%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%3-wh%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%jet%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%boat%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%terrain%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%kar%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%dirt%'
+
+-- 373 RESULTS
+SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_1
+ORDER BY NUM DESC
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%emer%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%fdny%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%nypd%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ambulance%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%army%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%tank%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%emr%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%armor%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%AMB%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%BULA%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hosp%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%med%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%emt%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%para%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ems%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%amu%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mbu%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%e.m.s%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ama%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%FD%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Fir%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%engine%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%PD%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Pol%'
+
+-- Group 14: Emergency Vehicle
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET
+    VEHICLE_TYPE_CODE_1 = 'EMERGENCY VEHICLE'
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%emer%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%fdny%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%nypd%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ambulance%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%army%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%tank%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%emr%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%armor%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%AMB%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%BULA%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%hosp%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%med%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%emt%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%para%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ems%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%amu%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%mbu%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%e.m.s%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ama%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%FD%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Fir%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%engine%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%PD%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%Pol%'
+
+-- 365 RESULTS
+SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_1
+ORDER BY NUM DESC
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE VEHICLE_TYPE_CODE_1 LIKE '%UNK%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%NA%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%n/a%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%.%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%oth%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%ukn%'
+
+
+SELECT DISTINCT VEHICLE_TYPE_CODE_1
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+WHERE VEHICLE_TYPE_CODE_1 NOT IN ('PASSENGER VEHICLE','TAXI OR LIMO','COMMERCIAL VEHICLE', 'PUBLIC TRANSPORTATION', 'MOTORCYCLE', 'EMERGENCY VEHICLE', 'CONSTRUCTION', 'UTILITY', 'DELIVERY', 'ALL TERRAIN', 'GOVERNMENT', 'FOOD')
+
+-- Group 15: Unknown
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET
+    VEHICLE_TYPE_CODE_1 = 'UNKNOWN'
+WHERE VEHICLE_TYPE_CODE_1 NOT IN ('PASSENGER VEHICLE','TAXI OR LIMO','COMMERCIAL VEHICLE', 'PUBLIC TRANSPORTATION', 'MOTORCYCLE', 'EMERGENCY VEHICLE', 'CONSTRUCTION', 'UTILITY', 'DELIVERY', 'ALL TERRAIN', 'GOVERNMENT', 'FOOD')
+
+ -- Group 1: GOVERNMENT   
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''GOVERNMENT''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%GOV%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%gvt%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%feder%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%city%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+--Group 2:PASSENGER_VEHICLE
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''PASSENGER VEHICLE''
+        WHERE (' + @FULL_COL_NAME + ' LIKE ''%2%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%4%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%Sed%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%PAS%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%SUV%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%pick%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%pk%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%door%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%dr%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%van%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%wagon%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%RV%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%mini%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%sprin%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%sub%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%jeep%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%winn%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%econo%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%dodge%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%ford%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%navi%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%chevy%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%cher%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%chev%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%open%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%stree%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%road%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%self%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%niss%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%merc%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%toyo%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%coup%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%R/V%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%f15%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%ram%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%smart%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%sona%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%isuzu%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%fusion%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%e-350%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%conve%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%econo%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%sling%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%wine%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%camp%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%convert%'')
+        AND ' + @FULL_COL_NAME + ' NOT LIKE ''%com%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+--Group 5: Delivery
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''DELIVERY''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%ups%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%fedex%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%fdX%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%uhaul%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%ship''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%usps%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%post%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%hau%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%freig%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%deliv%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%del%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%frht%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%mail%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%cour%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%uspo%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%us po%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%mov%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%fed%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%hal%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%dhl%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%dil%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%MOBIL%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%oil%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%house%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%pump%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%uhua%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 6: Public Transportation
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''PUBLIC TRANSPORTATION''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%bus%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%trans%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%nj%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%mta%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%port''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%scho%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%omni%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%shutt%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%OMT%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%oml%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%omr%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%coach%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 7: BICYCLE AND PERSONAL MOBILITY DEVICE
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''BICYCLE AND PERSONAL MOBILITY DEVICE''
+        WHERE (' + @FULL_COL_NAME + ' LIKE ''%electric%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%bicycle%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%bik%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%bic%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%cycle%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%seg%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%skate%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%board%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%e-bike%'')
+        AND ' + @FULL_COL_NAME + ' NOT LIKE ''%Mot%''
+        AND ' + @FULL_COL_NAME + ' NOT LIKE ''%scoot%''
+        AND ' + @FULL_COL_NAME + ' NOT LIKE ''%moped%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 8: Utility
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''UTILITY''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%Util%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%sweep%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%con e%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%sanit%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%tow''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%plow%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%shovel%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%snow%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%clean%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%street%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%power%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%elec%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%uli%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%dot%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%verizon%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%zion%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%acces%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%SKYWATCH%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%park%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%UT%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%mower%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%grid%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 9: Motorcycle
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''MOTORCYCLE''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%motor%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%mop%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%scoot%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%sco%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%vespa%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 10: Taxi or Limo
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''TAXI OR LIMO''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%tax%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%live%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%limo%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%cab%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 11: Horse Carriage
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''HORSE CARRIAGE''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%hors%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%carr%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%hrse%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%hosr%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+--Group 12: FOOD
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''FOOD''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%ice%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%cream%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%food%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%ood%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 13: All Terrain
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''ALL TERRAIN''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%golf%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%atv%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%utv%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%3-wh%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%jet%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%boat%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%kar%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%terrain%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%dirt%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 14: Emergency Vehicle
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''EMERGENCY VEHICLE''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%emer%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%fdny%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%nypd%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%ambulance%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%army%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%tank%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%emr%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%armor%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%AMB%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%BULA%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%hosp%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%med%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%emt%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%para%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%ems%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%amu%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%mbu%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%e.m.s%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%ama%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%FD%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%Fir%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%PD%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%Pol%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%engine%'''
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 15: Unknown
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''UNKNOWN''
+        WHERE ' + @FULL_COL_NAME + ' NOT IN (''PASSENGER VEHICLE'',''TAXI OR LIMO'',''COMMERCIAL VEHICLE'', ''PUBLIC TRANSPORTATION'', ''MOTORCYCLE'', ''EMERGENCY VEHICLE'', ''CONSTRUCTION'', ''UTILITY'', ''DELIVERY'', ''ALL TERRAIN'', ''GOVERNMENT'', ''FOOD'') 
+        OR ' + @FULL_COL_NAME + ' IS NULL'
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
