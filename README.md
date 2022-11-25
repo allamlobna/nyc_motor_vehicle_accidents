@@ -1,6 +1,9 @@
 # nyc_motor_vehicle_accidents
 https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95
 Collected Nov 13
+
+[TOC]
+
 ## Summary
 I live in Hoboken, NJ right across the Hudson River from NYC. I have worked in the city and frequently go in for pleasure. My old boss frequently warned our team of the dangerous of driving in the city and to always be on the lookout for distracted drivers due to the high number of motor vehicle incidents.
 
@@ -9,6 +12,10 @@ While I don't doubt that NYC has a high number of vehicle incidents, I wanted to
 ## Exploratory Data Analysis Process
 ### 1) ASK
 
+- What are the highest risk times for an accident?
+- Where do the most accidents occur?
+- What are the most frequently involved vehicles?
+- Who is more at risk? Pedestrians, passengers, etc.
 
  
 ## Data Cleaning
@@ -25,24 +32,3 @@ initially, there were 59 different kinds of contributing factors
 Changes made:
 Unspecified: Added 80, 1
 Driver Distracted: Driver Inattention/Distraction, 
-
-White ambu
-SUBN - AMB
-NYS AMBULA
-NYC AMBULA
-GEN  AMBUL
-G AMB
-Fdny ambul
-EMT Ambula
-EMS Ambula
-EAMB
-e amb
-AMBULETTE
-AMBULENCE
-AMBULANE
-AMBULANCE
-AMBULACE
-AMBUL
-AMBUKANCE
-AMBU
-AMB
