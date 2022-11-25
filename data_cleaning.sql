@@ -45,11 +45,6 @@ INTO [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 FROM [nyc_motor_vehicle_collisions].[dbo].[Motor_Vehicle_Collisions_Crashes]
 WHERE COLLISION_ID IS NOT NULL
 
-SELECT TABLE_NAME 
-FROM [nyc_motor_vehicle_collisions].INFORMATION_SCHEMA.TABLES 
-
-
-
 --Confirmed all data appears to have been transferred to temp table
 SELECT * FROM [nyc_motor_vehicle_collisions].[dbo].[Motor_Vehicle_Collisions_Crashes]
 EXCEPT
@@ -140,7 +135,7 @@ CONTRIBUTING_FACTOR_VEHICLE_3 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_3, 'Illnesss
 CONTRIBUTING_FACTOR_VEHICLE_4 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_4, 'Illnesss', 'Illness'),
 CONTRIBUTING_FACTOR_VEHICLE_5 = REPLACE(CONTRIBUTING_FACTOR_VEHICLE_5, 'Illnesss', 'Illness')
 
---
+--Checking to see if there were additional contributing factors in columns 2-5 than in 1. There were none that weren't used in CONTRIBUTING_FACTOR_VEHICLE_1
 SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_1 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 EXCEPT
 SELECT DISTINCT CONTRIBUTING_FACTOR_VEHICLE_2 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
@@ -164,7 +159,7 @@ ORDER BY NUM_2 DESC
 -------------------------------------------------------------------------------
 -- Aggregating the Contributing Factors Columns --
 -------------------------------------------------------------------------------
-
+-- Added new columns for new factor grouping
 ALTER TABLE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 ADD 
     CONTRIBUTING_FACTORS_1 VARCHAR(MAX),
