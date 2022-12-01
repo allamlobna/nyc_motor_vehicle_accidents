@@ -266,11 +266,7 @@ BEGIN
     SET @COUNT = @COUNT + 1
 END
 ```
-After I was satisfied with the data, I loaded this table into Power BI. The aggregated and visualized data can be found *here*.
 
 ### Analysis and Findings
+After I was satisfied with the data, I loaded this table into Power BI. The aggregated and visualized data can be found [here](https://github.com/allamlobna/nyc_motor_vehicle_accidents/blob/main/NYC_MOTOR_VEHICLE_COLLISIONS.pdf).
 
-### Summary
-
-#### Recommendations to NYC OPEN DATA
-- Instead of allowing for unstructured data to be entered into the database, reducin

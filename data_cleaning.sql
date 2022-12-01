@@ -874,7 +874,8 @@ BEGIN
         OR ' + @FULL_COL_NAME + ' LIKE ''%co%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%f55%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%f45%'')
-        AND ' + @FULL_COL_NAME + ' NOT LIKE ''%PICK%'''        
+        AND ' + @FULL_COL_NAME + ' NOT LIKE ''%PICK%''
+        AND ' + @FULL_COL_NAME + ' NOT LIKE ''%CONSTRUCTION%'''           
     EXEC(@sql)
     SET @COUNT = @COUNT + 1
 END
