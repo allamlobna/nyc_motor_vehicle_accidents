@@ -10,7 +10,6 @@ FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_name = 'Motor_Vehicle_Collisions_Crashes'
 
 --Creates working table names [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
-
 SELECT 
     CRASH_DATE,
     CRASH_TIME,
@@ -71,7 +70,7 @@ JOIN [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] b
     AND a.[COLLISION_ID] <> b.[COLLISION_ID]
 WHERE a.ZIP_CODE IS NULL
 
--- 597452 ZIP_CODE NULL values, reduced NULL values by 6285
+-- 598105 ZIP_CODE NULL values, reduced NULL values by 6285
 SELECT COUNT(*)
 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE ZIP_CODE IS NULL
@@ -100,6 +99,13 @@ WHERE
     AND ON_STREET_NAME IS NULL
     AND CROSS_STREET_NAME IS NULL
 
+-- Adding Street Corner Column
+ALTER TABLE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+ADD STREET_CORNER VARCHAR(MAX)
+
+UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+SET STREET_CORNER = CONCAT(RTRIM(ON_STREET_NAME), ', ', RTRIM(CROSS_STREET_NAME))
+WHERE ON_STREET_NAME IS NOT NULL AND CROSS_STREET_NAME IS NOT NULL
 -------------------------------------------------------------------------------
 -- Cleaning String Values for Contributing_Factor_Vehicle_N --
 -------------------------------------------------------------------------------
@@ -506,7 +512,6 @@ SELECT DISTINCT VEHICLE_TYPE_CODE_1
 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE (VEHICLE_TYPE_CODE_1 LIKE '%box%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%semi%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%mack%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%mac%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%LADD%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%C0M%'
@@ -582,7 +587,7 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%bus%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%omr%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%coach%'
 
--- Group 7: BICYCLE AND PERSONAL MOBILITY DEVICE
+-- Group 7: BICYCLE OR PERSONAL MOBILITY DEVICE
 SELECT DISTINCT VEHICLE_TYPE_CODE_1
 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE (VEHICLE_TYPE_CODE_1 LIKE '%bike%'
@@ -607,6 +612,7 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%Util%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%con e%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%garb%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%sanit%'
+    OR VEHICLE_TYPE_CODE_1 LIKE '%garb%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%tow%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%plow%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%shovel%'
@@ -631,7 +637,6 @@ SELECT DISTINCT VEHICLE_TYPE_CODE_1
 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%motor%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%mop%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%scoot%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%sco%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%vespa%'
 
@@ -639,7 +644,7 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%motor%'
 SELECT DISTINCT VEHICLE_TYPE_CODE_1
 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
 WHERE VEHICLE_TYPE_CODE_1 LIKE '%tax%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%live%'
+    OR VEHICLE_TYPE_CODE_1 LIKE 'live%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%limo%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%cab%'
 
@@ -654,9 +659,8 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%hors%'
 --Group 12: FOOD
 SELECT DISTINCT VEHICLE_TYPE_CODE_1
 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
-WHERE VEHICLE_TYPE_CODE_1 LIKE '%ice%'
+WHERE VEHICLE_TYPE_CODE_1 LIKE 'ice%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%cream%'
-    OR VEHICLE_TYPE_CODE_1 LIKE '%food%'
     OR VEHICLE_TYPE_CODE_1 LIKE '%ood%'
 
 -- Group 13: All Terrain
@@ -704,8 +708,7 @@ WHERE VEHICLE_TYPE_CODE_1 LIKE '%emer%'
 -- Group 15: Unknown
 SELECT DISTINCT VEHICLE_TYPE_CODE_1
 FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
-WHERE VEHICLE_TYPE_CODE_1 NOT IN ('PASSENGER VEHICLE','TAXI OR LIMO','COMMERCIAL VEHICLE', 'PUBLIC TRANSPORTATION', 'MOTORCYCLE', 'EMERGENCY VEHICLE', 'CONSTRUCTION', 'UTILITY', 'DELIVERY', 'ALL TERRAIN', 'GOVERNMENT', 'FOOD')
-
+WHERE VEHICLE_TYPE_CODE_1 NOT IN ('PASSENGER VEHICLE','TAXI OR LIMO','COMMERCIAL VEHICLE', 'PUBLIC TRANSPORTATION', 'MOTORCYCLE', 'EMERGENCY VEHICLE', 'CONSTRUCTION', 'UTILITY', 'DELIVERY', 'ALL TERRAIN', 'GOVERNMENT', 'FOOD', 'HORSE CARRIAGE', 'BICYCLE OR PERSONAL MOBILITY DEVICE')
 
  -- Group 1: GOVERNMENT   
 DECLARE @sql varchar(MAX)
@@ -786,6 +789,96 @@ BEGIN
     SET @COUNT = @COUNT + 1
 END
 
+--Group 3: CONSTRUCTION
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''CONSTRUCTION''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''%2%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%cat%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%fork%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%cons%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%fk%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%tractor%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%lift%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%crane%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%boom%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%excav%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%dump%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%compactor%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%bulldozer%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%hoe%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%bucket%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%conc%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%mix%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%cemen%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%hopper%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%Tract''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%bob%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%pallet%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%trac%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%back%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%glass%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%buck%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%john%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%GATOR%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%esca%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%skid%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%stack%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%exca%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%bull%'''        
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
+-- Group 4: Commercial Vehicle
+DECLARE @sql varchar(MAX)
+DECLARE @COUNT SMALLINT = 1
+DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
+DECLARE @FULL_COL_NAME VARCHAR(MAX)
+WHILE @COUNT < 6
+BEGIN
+    SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
+    SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
+        SET ' + @FULL_COL_NAME + ' = ''COMMERCIAL VEHICLE''
+        WHERE (' + @FULL_COL_NAME + ' LIKE ''%box%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%semi%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%mac%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%LADD%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%C0M%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%18%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%15%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%truck%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%semi%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%trail%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%flat%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%16%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%tail%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%com%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%tractor%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%heavy%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%omm%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%Stake or Rack%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%trk%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%Multi-Wheeled Vehicle%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%Bulk Agriculture%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%f65%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%trl%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%stak%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%work%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%co%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%f55%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%f45%'')
+        AND ' + @FULL_COL_NAME + ' NOT LIKE ''%PICK%'''        
+    EXEC(@sql)
+    SET @COUNT = @COUNT + 1
+END
+
 --Group 5: Delivery
 DECLARE @sql varchar(MAX)
 DECLARE @COUNT SMALLINT = 1
@@ -852,7 +945,7 @@ BEGIN
     SET @COUNT = @COUNT + 1
 END
 
--- Group 7: BICYCLE AND PERSONAL MOBILITY DEVICE
+-- Group 7: BICYCLE OR PERSONAL MOBILITY DEVICE
 DECLARE @sql varchar(MAX)
 DECLARE @COUNT SMALLINT = 1
 DECLARE @COLUMN_NAME VARCHAR(MAX) = 'VEHICLE_TYPE_CODE_'
@@ -861,7 +954,7 @@ WHILE @COUNT < 6
 BEGIN
     SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
     SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
-        SET ' + @FULL_COL_NAME + ' = ''BICYCLE AND PERSONAL MOBILITY DEVICE''
+        SET ' + @FULL_COL_NAME + ' = ''BICYCLE OR PERSONAL MOBILITY DEVICE''
         WHERE (' + @FULL_COL_NAME + ' LIKE ''%electric%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%bicycle%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%bik%''
@@ -892,6 +985,7 @@ BEGIN
         OR ' + @FULL_COL_NAME + ' LIKE ''%sweep%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%con e%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%sanit%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''%garb%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%tow''
         OR ' + @FULL_COL_NAME + ' LIKE ''%plow%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%shovel%''
@@ -926,7 +1020,6 @@ BEGIN
         SET ' + @FULL_COL_NAME + ' = ''MOTORCYCLE''
         WHERE ' + @FULL_COL_NAME + ' LIKE ''%motor%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%mop%''
-        OR ' + @FULL_COL_NAME + ' LIKE ''%scoot%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%sco%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%vespa%'''
     EXEC(@sql)
@@ -944,7 +1037,7 @@ BEGIN
     SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
         SET ' + @FULL_COL_NAME + ' = ''TAXI OR LIMO''
         WHERE ' + @FULL_COL_NAME + ' LIKE ''%tax%''
-        OR ' + @FULL_COL_NAME + ' LIKE ''%live%''
+        OR ' + @FULL_COL_NAME + ' LIKE ''live%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%limo%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%cab%'''
     EXEC(@sql)
@@ -979,9 +1072,8 @@ BEGIN
     SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
     SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
         SET ' + @FULL_COL_NAME + ' = ''FOOD''
-        WHERE ' + @FULL_COL_NAME + ' LIKE ''%ice%''
+        WHERE ' + @FULL_COL_NAME + ' LIKE ''ice%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%cream%''
-        OR ' + @FULL_COL_NAME + ' LIKE ''%food%''
         OR ' + @FULL_COL_NAME + ' LIKE ''%ood%'''
     EXEC(@sql)
     SET @COUNT = @COUNT + 1
@@ -1048,6 +1140,12 @@ BEGIN
     SET @COUNT = @COUNT + 1
 END
 
+-- 312 RESULTS
+SELECT VEHICLE_TYPE_CODE_1, COUNT(VEHICLE_TYPE_CODE_1) NUM
+FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
+GROUP BY VEHICLE_TYPE_CODE_1
+ORDER BY NUM DESC
+
 -- Group 15: Unknown
 DECLARE @sql varchar(MAX)
 DECLARE @COUNT SMALLINT = 1
@@ -1058,30 +1156,7 @@ BEGIN
     SET @FULL_COL_NAME = @COLUMN_NAME + CAST (@COUNT AS VARCHAR)
     SET @sql = 'UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP] 
         SET ' + @FULL_COL_NAME + ' = ''UNKNOWN''
-        WHERE ' + @FULL_COL_NAME + ' NOT IN (''PASSENGER VEHICLE'',''TAXI OR LIMO'',''COMMERCIAL VEHICLE'', ''PUBLIC TRANSPORTATION'', ''MOTORCYCLE'', ''EMERGENCY VEHICLE'', ''CONSTRUCTION'', ''UTILITY'', ''DELIVERY'', ''ALL TERRAIN'', ''GOVERNMENT'', ''FOOD'') 
-        OR ' + @FULL_COL_NAME + ' IS NULL'
+        WHERE ' + @FULL_COL_NAME + ' NOT IN (''PASSENGER VEHICLE'',''TAXI OR LIMO'',''COMMERCIAL VEHICLE'', ''PUBLIC TRANSPORTATION'', ''MOTORCYCLE'', ''EMERGENCY VEHICLE'', ''CONSTRUCTION'', ''UTILITY'', ''DELIVERY'', ''ALL TERRAIN'', ''GOVERNMENT'', ''FOOD'', ''HORSE CARRIAGE'',''BICYCLE OR PERSONAL MOBILITY DEVICE'') '
     EXEC(@sql)
     SET @COUNT = @COUNT + 1
 END
-
-SELECT TOP (1000) *
-FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
-
--- Adding Street Corner Column
-ALTER TABLE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
-ADD STREET_CORNER VARCHAR(MAX)
-
-UPDATE [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
-SET STREET_CORNER = CONCAT(RTRIM(ON_STREET_NAME), ', ', RTRIM(CROSS_STREET_NAME))
-WHERE ON_STREET_NAME IS NOT NULL AND CROSS_STREET_NAME IS NOT NULL
-
-
-select BOROUGH, count(BOROUGH) NUM
-FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
-GROUP BY BOROUGH
-ORDER BY NUM
-
-select CRASH_TIME, count(CRASH_TIME) NUM
-FROM [nyc_motor_vehicle_collisions].[dbo].[VEHICLE_COLLISIONS_TEMP]
-GROUP BY CRASH_TIME
-ORDER BY NUM Desc
