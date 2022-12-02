@@ -2,6 +2,23 @@
 https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95
 Collected Nov 13
 
+- [nyc\_motor\_vehicle\_accidents](#nyc_motor_vehicle_accidents)
+  - [**Introduction**](#introduction)
+  - [**Exploratory Data Analysis Process**](#exploratory-data-analysis-process)
+    - [**Ask**](#ask)
+      - [**Guiding Questions**](#guiding-questions)
+    - [**Prepare**](#prepare)
+      - [**Data Source**](#data-source)
+      - [**Data Format**](#data-format)
+    - [**Process**](#process)
+      - [**Tools Used:**](#tools-used)
+      - [**Transform the Data**](#transform-the-data)
+    - [**Data Cleaning**](#data-cleaning)
+      - [**Cleaning Location Data**](#cleaning-location-data)
+      - [**Cleaning String Values: Contributing Factors**](#cleaning-string-values-contributing-factors)
+      - [**Data Wrangling: Vehicle Type**](#data-wrangling-vehicle-type)
+      - [**Data Wrangling: Contributing Factors**](#data-wrangling-contributing-factors)
+    - [Analysis and Findings](#analysis-and-findings)
 
 
 ## **Introduction**
