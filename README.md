@@ -284,6 +284,6 @@ BEGIN
 END
 ```
 
-### *Analysis and Findings*
+### **Analysis and Findings**
 After I was satisfied with the data, I imported this table into Power BI. The aggregated and visualized data can be found [here](https://github.com/allamlobna/nyc_motor_vehicle_accidents/blob/main/NYC_MOTOR_VEHICLE_COLLISIONS.pdf).
 
