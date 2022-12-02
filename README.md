@@ -18,7 +18,7 @@ Collected Nov 13
       - [**Cleaning String Values: Contributing Factors**](#cleaning-string-values-contributing-factors)
       - [**Data Wrangling: Vehicle Type**](#data-wrangling-vehicle-type)
       - [**Data Wrangling: Contributing Factors**](#data-wrangling-contributing-factors)
-    - [Analysis and Findings](#analysis-and-findings)
+    - [**Analysis and Findings**](#analysis-and-findings)
 
 
 ## **Introduction**
